@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## MongoDB storage & deployment
+
+Tasks are stored in a MongoDB collection (`tasks`).
+
+1. Create a free cluster at https://cloud.mongodb.com (Atlas) and a database user (Database Access).
+2. Network Access: allow your IP for local dev, and `0.0.0.0/0` for Vercel (serverless IPs vary).
+3. Connect > Drivers > copy the connection string, replace `<password>`.
+4. Copy `.env.example` to `.env.local` and set `MONGODB_URI`.
+5. `npm run dev`.
+
+Deploy: push to GitHub, import the repo in Vercel, and add `MONGODB_URI` (and optionally `MONGODB_DB`) in Project Settings. There is no login, so anyone with the URL can edit tasks.
