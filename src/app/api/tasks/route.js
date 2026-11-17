@@ -1,5 +1,4 @@
 import { connection } from "next/server";
-import { isOwner, forbidden } from "@/lib/auth";
 import { listTasks, addTask, deleteCompleted } from "@/lib/db";
 
 const PRIORITIES = ["low", "medium", "high"];
@@ -19,7 +18,6 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!(await isOwner())) return forbidden();
   try {
     const b = await request.json();
     const title = String(b.title || "").trim().slice(0, 500);
@@ -41,7 +39,6 @@ export async function POST(request) {
 
 // DELETE /api/tasks  -> remove all completed tasks
 export async function DELETE() {
-  if (!(await isOwner())) return forbidden();
   try {
     await deleteCompleted();
     return Response.json({ ok: true });

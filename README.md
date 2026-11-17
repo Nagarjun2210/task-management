@@ -49,9 +49,7 @@ Deploy: push to GitHub, import the repo in Vercel, and add `MONGODB_URI` (and op
 
 ## Owner vs viewer
 
-- `/` is the public, read-only board (for viewers).
-- `/owner` is the owner dashboard. It asks for `OWNER_PASSWORD`, then allows adding, editing, completing, assigning and deleting tasks.
+- `/` is the read-only board (for viewers).
+- `/owner` is the owner dashboard with full controls (add, edit, complete, assign, delete).
 
-The routes alone are not the protection: write API endpoints reject any request without a valid signed owner cookie, so viewers cannot change anything even if they find `/owner` or call the API directly.
-
-Set `OWNER_PASSWORD` and `SESSION_SECRET` (32+ random characters) in `.env.local` and in Vercel (Project Settings > Environment Variables). Changing `SESSION_SECRET` signs everyone out.
+There is no login. `/owner` is only hidden (not linked anywhere and marked `noindex`); anyone who knows the URL, or calls the `/api/tasks` endpoints directly, can change tasks. Share only `/` with viewers.

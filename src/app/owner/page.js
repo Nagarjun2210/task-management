@@ -5,7 +5,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// Owner dashboard: shows a login form until the owner signs in.
+// Owner dashboard: full controls, no login. Anyone with this URL can edit.
 export default function OwnerPage() {
   return <TaskApp ownerRoute />;
 }

@@ -1,4 +1,3 @@
-import { isOwner, forbidden } from "@/lib/auth";
 import { updateTask, deleteTask } from "@/lib/db";
 
 function fail(e) {
@@ -7,7 +6,6 @@ function fail(e) {
 }
 
 export async function PATCH(request, { params }) {
-  if (!(await isOwner())) return forbidden();
   try {
     const { id } = await params;
     const b = await request.json();
@@ -31,7 +29,6 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(_request, { params }) {
-  if (!(await isOwner())) return forbidden();
   try {
     const { id } = await params;
     const ok = await deleteTask(id);

@@ -26,11 +26,8 @@ function dueLabel(due, today) {
 }
 
 export default function TaskApp({ ownerRoute = false }) {
-  const [owner, setOwner] = useState(false);
-  const [checked, setChecked] = useState(!ownerRoute);
-  const [password, setPassword] = useState("");
-  // only the /owner route can ever be editable
-  const readOnly = !(ownerRoute && owner);
+  // "/" is the read-only board, "/owner" is the editable dashboard
+  const readOnly = !ownerRoute;
   const [tasks, setTasks] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [today, setToday] = useState("");
@@ -58,37 +55,11 @@ export default function TaskApp({ ownerRoute = false }) {
 
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
-    if (ownerRoute) {
-      api("/api/session")
-        .then((s) => setOwner(s.owner))
-        .catch(() => {})
-        .finally(() => setChecked(true));
-    }
     api("/api/tasks")
       .then(setTasks)
       .catch((e) => setError(e.message))
       .finally(() => setLoaded(true));
-  }, [ownerRoute]);
-
-  async function login(e) {
-    e.preventDefault();
-    setError("");
-    try {
-      await api("/api/login", {
-        method: "POST",
-        body: JSON.stringify({ password }),
-      });
-      setOwner(true);
-      setPassword("");
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function logout() {
-    await api("/api/logout", { method: "POST" }).catch(() => {});
-    setOwner(false);
-  }
+  }, []);
 
   // optimistic update: apply locally, call server, roll back on failure
   async function mutate(apply, request) {
@@ -214,40 +185,6 @@ export default function TaskApp({ ownerRoute = false }) {
     );
   }
 
-  if (ownerRoute && !owner) {
-    return (
-      <main className="mx-auto w-full max-w-sm px-4 py-24">
-        <h1 className="text-2xl font-semibold tracking-tight">Owner login</h1>
-        {!checked ? (
-          <p className="mt-4 text-sm text-zinc-500">Checking session&hellip;</p>
-        ) : (
-          <form onSubmit={login} className="mt-6 flex flex-col gap-3">
-            <input
-              type="password"
-              autoFocus
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-label="Owner password"
-            />
-            {error && (
-              <p className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-300">
-                {error}
-              </p>
-            )}
-            <button
-              type="submit"
-              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
-            >
-              Sign in
-            </button>
-          </form>
-        )}
-      </main>
-    );
-  }
-
   const field =
     "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
@@ -257,14 +194,6 @@ export default function TaskApp({ ownerRoute = false }) {
         <h1 className="text-3xl font-semibold tracking-tight">
           {ownerRoute ? "Tasks" : "Task Board"}
         </h1>
-        {ownerRoute && (
-          <button
-            onClick={logout}
-            className="text-sm text-zinc-500 hover:text-foreground"
-          >
-            Sign out
-          </button>
-        )}
       </div>
       {!ownerRoute && <p className="mt-1 text-xs text-zinc-500">View only</p>}
       <p className="mt-1 text-sm text-zinc-500">
