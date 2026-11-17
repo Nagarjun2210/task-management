@@ -46,3 +46,9 @@ Tasks are stored in a MongoDB collection (`tasks`).
 5. `npm run dev`.
 
 Deploy: push to GitHub, import the repo in Vercel, and add `MONGODB_URI` (and optionally `MONGODB_DB`) in Project Settings. There is no login, so anyone with the URL can edit tasks.
+
+## Owner vs viewer
+
+One URL serves both. Anyone can view the board; the owner clicks **Owner login** and enters `OWNER_PASSWORD` to add, edit, complete, assign and delete tasks. Write API endpoints reject requests without a valid signed session cookie, so the restriction holds even if someone calls the API directly.
+
+Set `OWNER_PASSWORD` and `SESSION_SECRET` in `.env.local` and in Vercel (Project Settings > Environment Variables). Changing `SESSION_SECRET` signs everyone out.

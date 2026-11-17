@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { isViewer, readOnlyResponse } from "@/lib/mode";
+import { isOwner, forbidden } from "@/lib/auth";
 import { listTasks, addTask, deleteCompleted } from "@/lib/db";
 
 const PRIORITIES = ["low", "medium", "high"];
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (isViewer()) return readOnlyResponse();
+  if (!(await isOwner())) return forbidden();
   try {
     const b = await request.json();
     const title = String(b.title || "").trim().slice(0, 500);
@@ -41,7 +41,7 @@ export async function POST(request) {
 
 // DELETE /api/tasks  -> remove all completed tasks
 export async function DELETE() {
-  if (isViewer()) return readOnlyResponse();
+  if (!(await isOwner())) return forbidden();
   try {
     await deleteCompleted();
     return Response.json({ ok: true });

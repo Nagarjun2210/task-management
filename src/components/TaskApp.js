@@ -25,7 +25,11 @@ function dueLabel(due, today) {
   return `Due ${due}`;
 }
 
-export default function TaskApp({ readOnly = false }) {
+export default function TaskApp() {
+  const [owner, setOwner] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [password, setPassword] = useState("");
+  const readOnly = !owner;
   const [tasks, setTasks] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [today, setToday] = useState("");
@@ -53,11 +57,35 @@ export default function TaskApp({ readOnly = false }) {
 
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
+    api("/api/session")
+      .then((s) => setOwner(s.owner))
+      .catch(() => {});
     api("/api/tasks")
       .then(setTasks)
       .catch((e) => setError(e.message))
       .finally(() => setLoaded(true));
   }, []);
+
+  async function login(e) {
+    e.preventDefault();
+    setError("");
+    try {
+      await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      });
+      setOwner(true);
+      setShowLogin(false);
+      setPassword("");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function logout() {
+    await api("/api/logout", { method: "POST" }).catch(() => {});
+    setOwner(false);
+  }
 
   // optimistic update: apply locally, call server, roll back on failure
   async function mutate(apply, request) {
@@ -188,10 +216,46 @@ export default function TaskApp({ readOnly = false }) {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        {readOnly ? "Task Board" : "Tasks"}
-      </h1>
-      {readOnly && <p className="mt-1 text-xs text-zinc-500">View only</p>}
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {owner ? "Tasks" : "Task Board"}
+        </h1>
+        {owner ? (
+          <button
+            onClick={logout}
+            className="text-sm text-zinc-500 hover:text-foreground"
+          >
+            Sign out
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowLogin((v) => !v)}
+            className="text-sm text-zinc-500 hover:text-foreground"
+          >
+            Owner login
+          </button>
+        )}
+      </div>
+      {!owner && <p className="mt-1 text-xs text-zinc-500">View only</p>}
+      {!owner && showLogin && (
+        <form onSubmit={login} className="mt-4 flex gap-2">
+          <input
+            type="password"
+            autoFocus
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            placeholder="Owner password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-label="Owner password"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
+          >
+            Sign in
+          </button>
+        </form>
+      )}
       <p className="mt-1 text-sm text-zinc-500">
         {remaining} remaining · {tasks.length} total
       </p>
