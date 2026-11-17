@@ -25,13 +25,14 @@ function dueLabel(due, today) {
   return `Due ${due}`;
 }
 
-export default function TaskApp() {
+export default function TaskApp({ readOnly = false }) {
   const [tasks, setTasks] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [today, setToday] = useState("");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
   const [due, setDue] = useState("");
+  const [assignee, setAssignee] = useState("");
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
@@ -76,7 +77,9 @@ export default function TaskApp() {
     const list = tasks.filter(
       (t) =>
         (filter === "all" ? true : filter === "active" ? !t.done : t.done) &&
-        (!q || t.title.toLowerCase().includes(q))
+        (!q ||
+          t.title.toLowerCase().includes(q) ||
+          (t.assignee || "").toLowerCase().includes(q))
     );
     if (sort === "due")
       list.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
@@ -111,13 +114,27 @@ export default function TaskApp() {
         })
     );
 
+  const changeAssignee = (t, value) => {
+    const v = value.trim();
+    if (v === (t.assignee || "")) return;
+    mutate(
+      (p) => p.map((x) => (x.id === t.id ? { ...x, assignee: v } : x)),
+      () =>
+        api(`/api/tasks/${t.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assignee: v }),
+        })
+    );
+  };
+
   async function addTask(e) {
     e.preventDefault();
     const text = title.trim();
     if (!text) return;
-    const draft = { title: text, priority, due };
+    const draft = { title: text, priority, due, assignee: assignee.trim() };
     setTitle("");
     setDue("");
+    setAssignee("");
     setError("");
     try {
       const created = await api("/api/tasks", {
@@ -127,6 +144,7 @@ export default function TaskApp() {
       setTasks((prev) => [created, ...prev]);
     } catch (err) {
       setTitle(text);
+      setAssignee(draft.assignee);
       setError(err.message);
     }
   }
@@ -170,7 +188,10 @@ export default function TaskApp() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Tasks</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        {readOnly ? "Task Board" : "Tasks"}
+      </h1>
+      {readOnly && <p className="mt-1 text-xs text-zinc-500">View only</p>}
       <p className="mt-1 text-sm text-zinc-500">
         {remaining} remaining · {tasks.length} total
       </p>
@@ -181,6 +202,7 @@ export default function TaskApp() {
         </p>
       )}
 
+      {!readOnly && (
       <form onSubmit={addTask} className="mt-6 flex flex-wrap gap-2">
         <input
           className={`${field} min-w-0 flex-1 basis-60`}
@@ -208,6 +230,14 @@ export default function TaskApp() {
           onChange={(e) => setDue(e.target.value)}
           aria-label="Due date"
         />
+        <input
+          className={`${field} min-w-0 basis-40`}
+          placeholder="Assign to…"
+          value={assignee}
+          onChange={(e) => setAssignee(e.target.value)}
+          aria-label="Assignee"
+          maxLength={100}
+        />
         <button
           type="submit"
           className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
@@ -215,6 +245,7 @@ export default function TaskApp() {
           Add
         </button>
       </form>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-2">
         <input
@@ -255,12 +286,14 @@ export default function TaskApp() {
             </button>
           ))}
         </div>
-        <button
-          onClick={clearDone}
-          className="text-sm text-zinc-500 hover:text-foreground"
-        >
-          Clear completed
-        </button>
+        {!readOnly && (
+          <button
+            onClick={clearDone}
+            className="text-sm text-zinc-500 hover:text-foreground"
+          >
+            Clear completed
+          </button>
+        )}
       </div>
 
       <ul className="mt-4 flex flex-col gap-2">
@@ -273,11 +306,12 @@ export default function TaskApp() {
               type="checkbox"
               checked={t.done}
               onChange={() => toggle(t)}
+              disabled={readOnly}
               className="h-4 w-4"
               aria-label={`Mark "${t.title}" done`}
             />
             <div className="min-w-0 flex-1">
-              {editingId === t.id ? (
+              {!readOnly && editingId === t.id ? (
                 <input
                   autoFocus
                   className={`${field} w-full`}
@@ -293,12 +327,13 @@ export default function TaskApp() {
                 <button
                   className={`block max-w-full truncate text-left ${
                     t.done ? "text-zinc-400 line-through" : ""
-                  }`}
+                  } ${readOnly ? "cursor-default" : ""}`}
+                  disabled={readOnly}
                   onClick={() => {
                     setEditingId(t.id);
                     setEditText(t.title);
                   }}
-                  title="Click to edit"
+                  title={readOnly ? undefined : "Click to edit"}
                 >
                   {t.title}
                 </button>
@@ -313,29 +348,50 @@ export default function TaskApp() {
                 >
                   {t.due ? dueLabel(t.due, today) : "No due date"}
                 </span>
-                <input
-                  type="date"
-                  value={t.due || ""}
-                  onChange={(e) => changeDue(t, e.target.value)}
-                  className="w-5 cursor-pointer bg-transparent opacity-60 hover:opacity-100"
-                  aria-label={`Due date for "${t.title}"`}
-                />
+                {!readOnly && (
+                  <input
+                    type="date"
+                    value={t.due || ""}
+                    onChange={(e) => changeDue(t, e.target.value)}
+                    className="w-5 cursor-pointer bg-transparent opacity-60 hover:opacity-100"
+                    aria-label={`Due date for "${t.title}"`}
+                  />
+                )}
               </label>
+              {readOnly ? (
+                <span className="text-xs text-zinc-500">
+                  {t.assignee ? `Assigned to ${t.assignee}` : "Unassigned"}
+                </span>
+              ) : (
+                <input
+                  key={t.assignee || ""}
+                  defaultValue={t.assignee || ""}
+                  onBlur={(e) => changeAssignee(t, e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  placeholder="Unassigned"
+                  maxLength={100}
+                  className="w-full bg-transparent text-xs text-zinc-500 placeholder:text-zinc-400 focus:text-foreground focus:outline-none"
+                  aria-label={`Assignee for "${t.title}"`}
+                />
+              )}
             </div>
             <button
               onClick={() => cyclePriority(t)}
-              title="Click to change priority"
-              className={`rounded-full px-2 py-0.5 text-xs ${PRIORITY_STYLES[t.priority]}`}
+              disabled={readOnly}
+              title={readOnly ? undefined : "Click to change priority"}
+              className={`rounded-full px-2 py-0.5 text-xs ${PRIORITY_STYLES[t.priority]} ${readOnly ? "cursor-default" : ""}`}
             >
               {t.priority}
             </button>
-            <button
-              onClick={() => remove(t.id)}
-              className="text-zinc-400 hover:text-red-500"
-              aria-label={`Delete "${t.title}"`}
-            >
-              ✕
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => remove(t.id)}
+                className="text-zinc-400 hover:text-red-500"
+                aria-label={`Delete "${t.title}"`}
+              >
+                ✕
+              </button>
+            )}
           </li>
         ))}
         {loaded && visible.length === 0 && (

@@ -15,11 +15,12 @@ function collection() {
   );
 }
 
-const toTask = ({ _id, title, priority, due, done }) => ({
+const toTask = ({ _id, title, priority, due, assignee, done }) => ({
   id: _id,
   title,
   priority,
   due,
+  assignee: assignee || "",
   done,
 });
 

@@ -1,3 +1,4 @@
+import { isViewer, readOnlyResponse } from "@/lib/mode";
 import { updateTask, deleteTask } from "@/lib/db";
 
 function fail(e) {
@@ -6,6 +7,7 @@ function fail(e) {
 }
 
 export async function PATCH(request, { params }) {
+  if (isViewer()) return readOnlyResponse();
   try {
     const { id } = await params;
     const b = await request.json();
@@ -16,6 +18,8 @@ export async function PATCH(request, { params }) {
       patch.priority = b.priority;
     if (typeof b.due === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(b.due))
       patch.due = b.due;
+    if (typeof b.assignee === "string")
+      patch.assignee = b.assignee.trim().slice(0, 100);
     if (typeof b.done === "boolean") patch.done = b.done;
     const ok = await updateTask(id, patch);
     return ok
@@ -27,6 +31,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(_request, { params }) {
+  if (isViewer()) return readOnlyResponse();
   try {
     const { id } = await params;
     const ok = await deleteTask(id);
