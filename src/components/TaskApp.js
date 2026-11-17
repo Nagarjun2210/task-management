@@ -25,11 +25,12 @@ function dueLabel(due, today) {
   return `Due ${due}`;
 }
 
-export default function TaskApp() {
+export default function TaskApp({ ownerRoute = false }) {
   const [owner, setOwner] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
+  const [checked, setChecked] = useState(!ownerRoute);
   const [password, setPassword] = useState("");
-  const readOnly = !owner;
+  // only the /owner route can ever be editable
+  const readOnly = !(ownerRoute && owner);
   const [tasks, setTasks] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [today, setToday] = useState("");
@@ -57,14 +58,17 @@ export default function TaskApp() {
 
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
-    api("/api/session")
-      .then((s) => setOwner(s.owner))
-      .catch(() => {});
+    if (ownerRoute) {
+      api("/api/session")
+        .then((s) => setOwner(s.owner))
+        .catch(() => {})
+        .finally(() => setChecked(true));
+    }
     api("/api/tasks")
       .then(setTasks)
       .catch((e) => setError(e.message))
       .finally(() => setLoaded(true));
-  }, []);
+  }, [ownerRoute]);
 
   async function login(e) {
     e.preventDefault();
@@ -75,7 +79,6 @@ export default function TaskApp() {
         body: JSON.stringify({ password }),
       });
       setOwner(true);
-      setShowLogin(false);
       setPassword("");
     } catch (err) {
       setError(err.message);
@@ -211,6 +214,40 @@ export default function TaskApp() {
     );
   }
 
+  if (ownerRoute && !owner) {
+    return (
+      <main className="mx-auto w-full max-w-sm px-4 py-24">
+        <h1 className="text-2xl font-semibold tracking-tight">Owner login</h1>
+        {!checked ? (
+          <p className="mt-4 text-sm text-zinc-500">Checking session&hellip;</p>
+        ) : (
+          <form onSubmit={login} className="mt-6 flex flex-col gap-3">
+            <input
+              type="password"
+              autoFocus
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-label="Owner password"
+            />
+            {error && (
+              <p className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
+            >
+              Sign in
+            </button>
+          </form>
+        )}
+      </main>
+    );
+  }
+
   const field =
     "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
@@ -218,44 +255,18 @@ export default function TaskApp() {
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">
-          {owner ? "Tasks" : "Task Board"}
+          {ownerRoute ? "Tasks" : "Task Board"}
         </h1>
-        {owner ? (
+        {ownerRoute && (
           <button
             onClick={logout}
             className="text-sm text-zinc-500 hover:text-foreground"
           >
             Sign out
           </button>
-        ) : (
-          <button
-            onClick={() => setShowLogin((v) => !v)}
-            className="text-sm text-zinc-500 hover:text-foreground"
-          >
-            Owner login
-          </button>
         )}
       </div>
-      {!owner && <p className="mt-1 text-xs text-zinc-500">View only</p>}
-      {!owner && showLogin && (
-        <form onSubmit={login} className="mt-4 flex gap-2">
-          <input
-            type="password"
-            autoFocus
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            placeholder="Owner password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-label="Owner password"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
-          >
-            Sign in
-          </button>
-        </form>
-      )}
+      {!ownerRoute && <p className="mt-1 text-xs text-zinc-500">View only</p>}
       <p className="mt-1 text-sm text-zinc-500">
         {remaining} remaining · {tasks.length} total
       </p>
